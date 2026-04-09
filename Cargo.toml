@@ -6,7 +6,7 @@ members = ["wqb_api"]
 [workspace.package]
 
 version = "0.1.0"
-authors = ["canse suen <myant91@126.com>"]
+authors = ["KaceSuen <myant91@126.com>"]
 edition = "2024"
 license = "MIT"
 

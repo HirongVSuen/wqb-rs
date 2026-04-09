@@ -2,7 +2,7 @@ use super::client::ApiClient;
 use super::model::SignInInfo;
 
 fn sign_in_info() -> SignInInfo {
-    SignInInfo { email: "myant91@126.com".to_string(), password: "F!r#DBB9".to_string() }
+    SignInInfo { email: "xxxx@xxx.com".to_string(), password: "xxxxx".to_string() }
 }
 
 async fn sign_in_client() -> ApiClient {

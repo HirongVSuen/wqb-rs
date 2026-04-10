@@ -172,11 +172,11 @@ impl ApiClient {
                 )
             })?
             .filter(|s| !s.is_empty())
-            .last()
+            .next_back()
             .ok_or_else(|| {
                 ApiClientError::BussinessError(
                     "post_simulations".to_string(),
-                    format!("Location header path is empty"),
+                    "Location header path is empty".to_string(),
                 )
             })?;
         Ok(simulations_id.to_string())

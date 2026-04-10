@@ -23,9 +23,10 @@ pub struct Token {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Data_Sets_Setting {
+pub struct DataSetsSetting {
     pub delay: u8,
-    pub instrumentType: String,
+    #[serde(rename = "instrumentType")]
+    pub instrument_type: String,
     pub limit: u8,
     pub offset: u8,
     pub region: String,
@@ -33,13 +34,14 @@ pub struct Data_Sets_Setting {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Data_Fields_Setting {
+pub struct DataFieldsSetting {
     pub delay: u8,
-    pub instrumentType: String,
+    #[serde(rename = "instrumentType")]
+    pub instrument_type: String,
     pub limit: u8,
     pub offset: u8,
     pub region: String,
     pub universe: String,
     #[serde(rename = "dataset.id")]
-    pub dataSetId: String,
+    pub data_set_id: String,
 }

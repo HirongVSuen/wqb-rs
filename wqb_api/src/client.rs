@@ -170,7 +170,8 @@ impl ApiClient {
                     "post_simulations".to_string(),
                     "Location URL cannot be a base (no path segments)".to_string(),
                 )
-            })?.rfind(|s| !s.is_empty())
+            })?
+            .rfind(|s| !s.is_empty())
             .ok_or_else(|| {
                 ApiClientError::BussinessError(
                     "post_simulations".to_string(),
@@ -272,7 +273,7 @@ impl ApiClient {
     }
 
     /// Get a list of data sets.
-    pub async fn data_sets(&self, settings: &Data_Sets_Setting) -> ApiClientResult<Value> {
+    pub async fn data_sets(&self, settings: &DataSetsSetting) -> ApiClientResult<Value> {
         let url = self.base_url.join("data-sets")?;
 
         let response = self.client.get(url).query(settings).send().await?;
@@ -289,7 +290,7 @@ impl ApiClient {
     }
 
     /// Get a data set field by data set ID.
-    pub async fn data_fields(&self, settings: &Data_Fields_Setting) -> ApiClientResult<Value> {
+    pub async fn data_fields(&self, settings: &DataFieldsSetting) -> ApiClientResult<Value> {
         let url = self.base_url.join("data-fields")?;
 
         let response = self.client.get(url).query(settings).send().await?;

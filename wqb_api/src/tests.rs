@@ -1,7 +1,7 @@
 use super::client::ApiClient;
 use super::client::ApiClientResult;
-use super::model::Data_Fields_Setting;
-use super::model::Data_Sets_Setting;
+use super::model::DataFieldsSetting;
+use super::model::DataSetsSetting;
 use super::model::SignInInfo;
 
 fn sign_in_info() -> SignInInfo {
@@ -124,9 +124,9 @@ async fn test_user_activities_diversities() {
 #[tokio::test]
 async fn test_data_set() -> ApiClientResult<()> {
     let client = sign_in_client().await;
-    let data_search = Data_Sets_Setting {
+    let data_search = DataSetsSetting {
         delay: 1,
-        instrumentType: "EQUITY".to_string(),
+        instrument_type: "EQUITY".to_string(),
         limit: 20,
         offset: 0,
         region: "USA".to_string(),
@@ -140,14 +140,14 @@ async fn test_data_set() -> ApiClientResult<()> {
 #[tokio::test]
 async fn test_data_set_field() -> ApiClientResult<()> {
     let client = sign_in_client().await;
-    let data_sets_setting = Data_Fields_Setting {
+    let data_sets_setting = DataFieldsSetting {
         delay: 1,
-        instrumentType: "EQUITY".to_string(),
+        instrument_type: "EQUITY".to_string(),
         limit: 20,
         offset: 0,
         region: "USA".to_string(),
         universe: "TOP3000".to_string(),
-        dataSetId: "analyst10".to_string(),
+        data_set_id: "analyst10".to_string(),
     };
     let result = client.data_fields(&data_sets_setting).await?;
     assert!(result.get("count").is_some());

@@ -1,29 +1,29 @@
-# ACE - WorldQuant Brain API Client for Rust
+# ACE - WorldQuant Brain API Rust 客户端
 
 [![Crates.io](https://img.shields.io/crates/v/ace)](https://crates.io/crates/ace)
 [![Documentation](https://docs.rs/ace/badge.svg)](https://docs.rs/ace)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
 
-A comprehensive Rust client library for the WorldQuant Brain API, providing type-safe, asynchronous access to financial data and quantitative research tools.
+一个用于访问 WorldQuant Brain API 的 Rust 客户端库，提供类型安全、异步的金融数据和量化研究工具访问。
 
-## Features
+## 功能特性
 
-- 🔐 **Full Authentication** - Login, logout, and session management
-- 📊 **Simulation Management** - Create, query, and configure simulations
-- 📈 **Alpha Management** - Query alpha information and recordsets
-- 👤 **User Analytics** - Access user activity diversity metrics
-- 🗃️ **Data Exploration** - Query datasets and data fields
-- 🛠️ **Operator Discovery** - Retrieve available operators
-- 🔧 **Type Safety** - Rust's type system ensures data integrity
-- ⚡ **Async Ready** - Built on Tokio for high-performance async operations
-- 📝 **Comprehensive Logging** - Integrated tracing support
-- 🍪 **Cookie Management** - Automatic session cookie handling
-- 🎯 **Error Handling** - Detailed error types with context
+- 🔐 **完整认证** - 登录、登出和会话管理
+- 📊 **模拟管理** - 创建、查询和配置模拟
+- 📈 **Alpha 管理** - 查询 Alpha 信息和记录集
+- 👤 **用户分析** - 访问用户活动多样性指标
+- 🗃️ **数据探索** - 查询数据集和数据字段
+- 🛠️ **操作符发现** - 检索可用操作符
+- 🔧 **类型安全** - Rust 类型系统确保数据完整性
+- ⚡ **异步支持** - 基于 Tokio 的高性能异步操作
+- 📝 **完整日志** - 集成 tracing 支持
+- 🍪 **Cookie 管理** - 自动会话 Cookie 处理
+- 🎯 **错误处理** - 详细的错误类型和上下文信息
 
-## Installation
+## 安装
 
-Add to your `Cargo.toml`:
+在 `Cargo.toml` 中添加依赖：
 
 ```toml
 [dependencies]
@@ -31,32 +31,32 @@ ace = "0.1.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
-## Quick Start
+## 快速开始
 
-### Basic Usage
+### 基本使用
 
 ```rust
-use ace::low_level::{ApiClient, SignInInfo};
+use ace::low_level::{ApiClient, SignInInfo, DataSetsSetting};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create API client
+    // 创建 API 客户端
     let client = ApiClient::new()?;
     
-    // Login
+    // 登录
     let sign_in_info = SignInInfo {
         email: "your-email@example.com".to_string(),
         password: "your-password".to_string(),
     };
     
     client.sign_in(&sign_in_info).await?;
-    println!("Login successful!");
+    println!("登录成功！");
     
-    // Get authentication info
+    // 获取认证信息
     let auth_info = client.get_authentication().await?;
-    println!("User ID: {}", auth_info.user.id);
+    println!("用户 ID: {}", auth_info.user.id);
     
-    // Query datasets
+    // 查询数据集
     let dataset_settings = DataSetsSetting {
         delay: 1,
         instrument_type: "EQUITY".to_string(),
@@ -67,16 +67,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     let datasets = client.data_sets(&dataset_settings).await?;
-    println!("Datasets: {}", datasets);
+    println!("数据集: {}", datasets);
     
-    // Logout
+    // 登出
     client.delete_authentication().await?;
     
     Ok(())
 }
 ```
 
-### Creating a Simulation
+### 创建模拟
 
 ```rust
 use ace::low_level::ApiClient;
@@ -85,9 +85,9 @@ use ace::low_level::ApiClient;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = ApiClient::new()?;
     
-    // Login first...
+    // 先登录...
     
-    // Create simulation
+    // 创建模拟
     let simulation_obj = r#"
     [{
         "type": "REGULAR",
@@ -113,149 +113,149 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#;
     
     let simulation_id = client.post_simulations(simulation_obj).await?;
-    println!("Simulation created with ID: {}", simulation_id);
+    println!("模拟创建成功，ID: {}", simulation_id);
     
     Ok(())
 }
 ```
 
-## API Overview
+## API 概览
 
-### Core Types
+### 核心类型
 
-- `ApiClient` - Main client struct with all API methods
-- `SignInInfo` - Login credentials (email/password)
-- `AuthenticationInfo` - Authentication context with user/token info
-- `DataSetsSetting` - Dataset query parameters
-- `DataFieldsSetting` - Data field query parameters
+- `ApiClient` - 主要客户端结构，包含所有 API 方法
+- `SignInInfo` - 登录凭据（邮箱/密码）
+- `AuthenticationInfo` - 认证上下文，包含用户/令牌信息
+- `DataSetsSetting` - 数据集查询参数
+- `DataFieldsSetting` - 数据字段查询参数
 
-### Key Methods
+### 主要方法
 
-#### Authentication
-- `sign_in()` - Authenticate with WorldQuant Brain
-- `get_authentication()` - Get current authentication info
-- `delete_authentication()` - Logout
+#### 认证相关
+- `sign_in()` - 登录到 WorldQuant Brain
+- `get_authentication()` - 获取当前认证信息
+- `delete_authentication()` - 登出
 
-#### Simulations
-- `option_simulations()` - Get simulation options and configurations
-- `post_simulations()` - Create new simulation
-- `get_simulations()` - Get simulation by ID
+#### 模拟管理
+- `option_simulations()` - 获取模拟选项和配置
+- `post_simulations()` - 创建新模拟
+- `get_simulations()` - 根据 ID 获取模拟
 
-#### Alpha Management
-- `alphas()` - Get alpha information
-- `alpha_recordsets()` - Get alpha recordsets
-- `alpha_recordsets_name()` - Get specific recordset by name
+#### Alpha 管理
+- `alphas()` - 获取 Alpha 信息
+- `alpha_recordsets()` - 获取 Alpha 记录集
+- `alpha_recordsets_name()` - 根据名称获取特定记录集
 
-#### Data Management
-- `data_sets()` - Query available datasets
-- `data_fields()` - Query data fields for a dataset
-- `operators()` - Get available operators
+#### 数据管理
+- `data_sets()` - 查询可用数据集
+- `data_fields()` - 查询数据集的数据字段
+- `operators()` - 获取可用操作符
 
-#### User Analytics
-- `user_activities_diversities()` - Get user activity diversity metrics
+#### 用户分析
+- `user_activities_diversities()` - 获取用户活动多样性指标
 
-## Error Handling
+## 错误处理
 
-The library uses a comprehensive error type `ApiClientError`:
+库使用全面的错误类型 `ApiClientError`：
 
 ```rust
 pub enum ApiClientError {
-    #[error("Network error: {0}")]
+    #[error("网络错误： {0}")]
     ReqwestErr(#[from] reqwest::Error),
     
-    #[error("Request failed: {api_name} (status: {status})")]
+    #[error("请求失败：{api_name} (状态码：{status})")]
     ResponseError { api_name: String, status: StatusCodeDisplay },
     
-    #[error("Deserialization error: {0}")]
+    #[error("反序列化错误：{0}")]
     SerdeError(#[from] serde_json::Error),
     
-    #[error("URL parsing error: {0}")]
+    #[error("URL 解析错误：{0}")]
     UrlError(#[from] url::ParseError),
     
-    #[error("Business error: {0} (details: {1})")]
+    #[error("业务错误：{0} (详情：{1})")]
     BussinessError(String, String),
 }
 ```
 
-## Running Tests
+## 运行测试
 
 ```bash
-# Run all tests
+# 运行所有测试
 cargo test
 
-# Run specific test
+# 运行特定测试
 cargo test test_sign_in
 
-# Run tests with output
+# 运行测试并显示输出
 cargo test -- --nocapture
 ```
 
-**Note:** Tests require valid WorldQuant Brain credentials. Update the test credentials in `ace/src/low_level/client.rs` before running tests.
+**注意：** 测试需要有效的 WorldQuant Brain 账户凭据。在运行测试前，请在 `ace/src/low_level/client.rs` 中更新测试凭据。
 
-## Project Structure
+## 项目结构
 
 ```
 wqb-rs/
-├── Cargo.toml          # Workspace configuration
-├── README.md           # This document
-├── LICENSE             # MIT License
-├── rust-toolchain.toml # Rust toolchain
-├── rustfmt.toml        # Code formatting
-└── ace/               # API client library
-    ├── Cargo.toml     # Library configuration
+├── Cargo.toml          # 工作空间配置
+├── README.md           # 本文档
+├── LICENSE             # MIT 许可证
+├── rust-toolchain.toml # Rust 工具链配置
+├── rustfmt.toml        # 代码格式化配置
+└── ace/               # API 客户端库
+    ├── Cargo.toml     # 库配置
     └── src/
-        ├── lib.rs     # Library entry point
-        ├── high_level/ # High-level API (planned)
-        └── low_level/ # Low-level API implementation
+        ├── lib.rs     # 库入口点
+        ├── high_level/ # 高级 API（计划中）
+        └── low_level/ # 低级 API 实现
             ├── mod.rs
             ├── client.rs
             └── model.rs
 ```
 
-## Development
+## 开发
 
-### Setup
+### 环境设置
 
 ```bash
-# Clone repository
+# 克隆仓库
 git clone <repository-url>
 cd wqb-rs
 
-# Build project
+# 构建项目
 cargo build
 
-# Run checks
+# 运行检查
 cargo check
 cargo clippy
 cargo fmt --check
 ```
 
-### Adding Features
+### 添加新功能
 
-1. Add data structures in `model.rs`
-2. Implement API methods in `client.rs`
-3. Add tests in the test module
-4. Run tests to verify functionality
+1. 在 `model.rs` 中添加数据结构
+2. 在 `client.rs` 中实现 API 方法
+3. 在测试模块中添加测试
+4. 运行测试验证功能
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please:
+欢迎贡献！请：
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+1. Fork 仓库
+2. 创建功能分支
+3. 进行更改
+4. 添加测试
+5. 提交 Pull Request
 
-## License
+## 许可证
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT 许可证 - 详见 [LICENSE](LICENSE)。
 
-## Support
+## 支持
 
-- Issues: [GitHub Issues](https://github.com/yourusername/wqb-rs/issues)
-- Documentation: [docs.rs/ace](https://docs.rs/ace)
+- 问题跟踪：[GitHub Issues](https://github.com/yourusername/wqb-rs/issues)
+- 文档：[docs.rs/ace](https://docs.rs/ace)
 
-## Disclaimer
+## 免责声明
 
-This library requires a valid WorldQuant Brain account. Users must comply with WorldQuant's terms of service and usage policies. This is an unofficial third-party library not affiliated with WorldQuant.
+本库需要有效的 WorldQuant Brain 账户。用户必须遵守 WorldQuant 的服务条款和使用政策。这是一个非官方的第三方库，与 WorldQuant 无关。

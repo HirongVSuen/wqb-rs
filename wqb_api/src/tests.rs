@@ -5,7 +5,7 @@ use super::model::DataSetsSetting;
 use super::model::SignInInfo;
 
 fn sign_in_info() -> SignInInfo {
-    SignInInfo { email: "xxx@xxx.com".to_string(), password: "xxxx".to_string() }
+    SignInInfo { email: "xxxx@xxxx.com".to_string(), password: "xxxxx".to_string() }
 }
 
 async fn sign_in_client() -> ApiClient {
@@ -151,5 +151,13 @@ async fn test_data_set_field() -> ApiClientResult<()> {
     };
     let result = client.data_fields(&data_sets_setting).await?;
     assert!(result.get("count").is_some());
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_operators() -> ApiClientResult<()> {
+    let client = sign_in_client().await;
+    let result = client.operators().await?;
+    assert!(result.as_array().is_some());
     Ok(())
 }

@@ -170,9 +170,7 @@ impl ApiClient {
                     "post_simulations".to_string(),
                     "Location URL cannot be a base (no path segments)".to_string(),
                 )
-            })?
-            .filter(|s| !s.is_empty())
-            .next_back()
+            })?.rfind(|s| !s.is_empty())
             .ok_or_else(|| {
                 ApiClientError::BussinessError(
                     "post_simulations".to_string(),

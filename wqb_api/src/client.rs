@@ -2,6 +2,7 @@ use crate::model::*;
 use reqwest::{Client, Method, Url, header};
 use serde_json::Value;
 use thiserror::Error;
+use tracing::{Level, event, instrument};
 
 /// API客户端错误
 #[derive(Error, Debug)]
@@ -20,8 +21,6 @@ pub enum ApiClientError {
 
     #[error("业务错误: {0} (详情: {1})")]
     BussinessError(String, String),
-    //    #[error("serde_urlencoded 错误: {0}")]
-    //   SerdeUrlencodedError(#[from] serde_urlencoded::ser::Error),
 }
 
 // 自定义一个包装器来优雅处理 Option<StatusCode>
@@ -76,7 +75,7 @@ impl ApiClient {
                 api_name: "sign_in".to_string(),
                 status: err.status().into(),
             })?;
-        print!("login user:{}", response.text().await?);
+        event!(Level::INFO, "login user:{}", response.text().await?);
         Ok(())
     }
 
@@ -93,7 +92,7 @@ impl ApiClient {
             })?;
 
         let result: AuthenticationInfo = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::TRACE, "get_authentication: {:?}", &result);
         Ok(result)
     }
 
@@ -121,7 +120,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::TRACE, "option_simulations: {:?}", &result);
         Ok(result)
     }
 
@@ -194,7 +193,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::INFO, "get_simulations: {:?}", &result);
         Ok(result)
     }
 
@@ -210,7 +209,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::INFO, "get_alphas: {:?}", &result);
         Ok(result)
     }
 
@@ -227,7 +226,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::TRACE, "get_alpha_recordsets: {:?}", &result);
         Ok(result)
     }
 
@@ -246,9 +245,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-
-        println!("{:?}", &result);
-
+        event!(Level::TRACE, "alpha_recordsets_name: {:?}", &result);
         Ok(result)
     }
 
@@ -268,7 +265,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::TRACE, "user_activities_diversities: {:?}", &result);
         Ok(result)
     }
 
@@ -285,7 +282,7 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{}", &result);
+        event!(Level::TRACE, "data_sets: {:?}", &result);
         Ok(result)
     }
 
@@ -302,7 +299,24 @@ impl ApiClient {
             })?;
 
         let result = response.json().await?;
-        println!("{:?}", &result);
+        event!(Level::TRACE, "data_fields: {:?}", &result);
+        Ok(result)
+    }
+
+    /// Get operators.
+    pub async fn operators(&self) -> ApiClientResult<Value> {
+        let url = self.base_url.join("operators")?;
+
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "operators".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        event!(Level::TRACE, "operators: {:?}", &result);
         Ok(result)
     }
 }

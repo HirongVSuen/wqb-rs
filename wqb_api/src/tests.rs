@@ -1,12 +1,15 @@
 use super::client::ApiClient;
+use super::client::ApiClientResult;
+use super::model::Data_Fields_Setting;
+use super::model::Data_Sets_Setting;
 use super::model::SignInInfo;
 
 fn sign_in_info() -> SignInInfo {
-    SignInInfo { email: "xxxx@xxx.com".to_string(), password: "xxxxx".to_string() }
+    SignInInfo { email: "xxx@xxx.com".to_string(), password: "xxxx".to_string() }
 }
 
 async fn sign_in_client() -> ApiClient {
-    let mut client = ApiClient::new().unwrap();
+    let client = ApiClient::new().unwrap();
     let sign_in_info = sign_in_info();
     client.sign_in(&sign_in_info).await.unwrap();
     client
@@ -19,7 +22,7 @@ fn test_new() {
 
 #[tokio::test]
 async fn test_sign_in() {
-    let mut client = ApiClient::new().unwrap();
+    let client = ApiClient::new().unwrap();
     let sign_in_info = sign_in_info();
     assert!(client.sign_in(&sign_in_info).await.is_ok());
 }
@@ -116,4 +119,37 @@ async fn test_alpha_recordsets_name() {
 async fn test_user_activities_diversities() {
     let client = sign_in_client().await;
     assert!(client.user_activities_diversities().await.is_ok());
+}
+
+#[tokio::test]
+async fn test_data_set() -> ApiClientResult<()> {
+    let client = sign_in_client().await;
+    let data_search = Data_Sets_Setting {
+        delay: 1,
+        instrumentType: "EQUITY".to_string(),
+        limit: 20,
+        offset: 0,
+        region: "USA".to_string(),
+        universe: "TOP3000".to_string(),
+    };
+    let result = client.data_sets(&data_search).await?;
+    assert!(result.get("count").is_some());
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_data_set_field() -> ApiClientResult<()> {
+    let client = sign_in_client().await;
+    let data_sets_setting = Data_Fields_Setting {
+        delay: 1,
+        instrumentType: "EQUITY".to_string(),
+        limit: 20,
+        offset: 0,
+        region: "USA".to_string(),
+        universe: "TOP3000".to_string(),
+        dataSetId: "analyst10".to_string(),
+    };
+    let result = client.data_fields(&data_sets_setting).await?;
+    assert!(result.get("count").is_some());
+    Ok(())
 }

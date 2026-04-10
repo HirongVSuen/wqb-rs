@@ -1,5 +1,6 @@
 use crate::model::*;
-use reqwest::{Client, Method, header};
+use reqwest::{Client, Method, Url, header};
+use serde_json::Value;
 use thiserror::Error;
 
 /// API客户端错误
@@ -8,11 +9,38 @@ pub enum ApiClientError {
     #[error("网路错误： {0}")]
     ReqwestErr(#[from] reqwest::Error),
 
-    #[error("api请求失败：{0} {1}")]
-    BussinessError(String, String),
+    #[error("请求响应异常: {api_name} (状态码: {status})")]
+    ResponseError { api_name: String, status: StatusCodeDisplay },
 
-    #[error("未登录")]
-    NotLoggedIn,
+    #[error("ApiClient 反序列化错误: {0}")]
+    SerdeError(#[from] serde_json::Error),
+
+    #[error("url 解析异常：{0}")]
+    UrlError(#[from] url::ParseError),
+
+    #[error("业务错误: {0} (详情: {1})")]
+    BussinessError(String, String),
+    //    #[error("serde_urlencoded 错误: {0}")]
+    //   SerdeUrlencodedError(#[from] serde_urlencoded::ser::Error),
+}
+
+// 自定义一个包装器来优雅处理 Option<StatusCode>
+#[derive(Debug)]
+pub struct StatusCodeDisplay(Option<reqwest::StatusCode>);
+
+impl From<Option<reqwest::StatusCode>> for StatusCodeDisplay {
+    fn from(status: Option<reqwest::StatusCode>) -> Self {
+        StatusCodeDisplay(status)
+    }
+}
+
+impl std::fmt::Display for StatusCodeDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(code) => write!(f, "{}", code), // 打印 "400 Bad Request"
+            None => write!(f, "无状态码(可能是网络超时)"), // 处理 None 的情况
+        }
+    }
 }
 
 /// API客户端结果类型
@@ -21,218 +49,261 @@ pub type ApiClientResult<T> = std::result::Result<T, ApiClientError>;
 /// WorldQuant Brain API客户端
 pub struct ApiClient {
     client: Client,
-    base_url: String,
-    sign_context: Option<SignInConext>,
+    base_url: Url,
 }
 
 impl ApiClient {
     /// 创建一个新的API客户端
     pub fn new() -> ApiClientResult<Self> {
-        let client =
-            Client::builder().cookie_store(true).build().map_err(ApiClientError::ReqwestErr)?;
-        let base_url = String::from("https://api.worldquantbrain.com");
-        Ok(Self { client, base_url, sign_context: None })
+        let client = Client::builder().cookie_store(true).build()?;
+        let base_url = Url::parse("https://api.worldquantbrain.com")?;
+        Ok(Self { client, base_url })
     }
 
     /// 登录
-    pub async fn sign_in(&mut self, sign_in_info: &SignInInfo) -> ApiClientResult<()> {
-        let url = format!("{}/authentication", self.base_url);
+    pub async fn sign_in(&self, sign_in_info: &SignInInfo) -> ApiClientResult<()> {
+        let url = self.base_url.join("authentication")?;
+
         let response = self
             .client
-            .post(&url)
+            .post(url)
             .basic_auth(&sign_in_info.email, Some(&sign_in_info.password))
             .send()
             .await?;
-        if response.status() != reqwest::StatusCode::CREATED {
-            eprintln!("sign_in failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "sign_in".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        let sign_context: SignInConext = serde_json::from_str(&text).map_err(|err| {
-            ApiClientError::BussinessError("解构SignInConext失败".to_string(), err.to_string())
-        })?;
-        self.sign_context = Some(sign_context);
-        println!("sign_in success: {}", text);
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "sign_in".to_string(),
+                status: err.status().into(),
+            })?;
+        print!("login user:{}", response.text().await?);
         Ok(())
     }
 
     /// 获取当前登录用户信息
-    pub async fn get_authentication(&self) -> ApiClientResult<()> {
-        let url = format!("{}/authentication", self.base_url);
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("get_authentication failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "get_authentication".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    pub async fn get_authentication(&self) -> ApiClientResult<AuthenticationInfo> {
+        let url = self.base_url.join("authentication")?;
+
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "get_authentication".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result: AuthenticationInfo = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 
     /// 登出
     pub async fn delete_authentication(&self) -> ApiClientResult<()> {
-        let url = format!("{}/authentication", self.base_url);
-        let response = self.client.delete(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("delete_authentication failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "delete_authentication".to_string(),
-                response.status().to_string(),
-            ));
-        }
+        let url = self.base_url.join("authentication")?;
+
+        let response = self.client.delete(url).send().await?;
+        response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+            api_name: "delete_authentication".to_string(),
+            status: err.status().into(),
+        })?;
         Ok(())
     }
 
     /// 获取有关可用属性、其类型、要求和允许值的详细信息。
-    pub async fn option_simulations(&self) -> ApiClientResult<()> {
-        let url = format!("{}/simulations", self.base_url);
-        let response = self.client.request(Method::OPTIONS, &url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("option_simulations failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "option_simulations".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    pub async fn option_simulations(&self) -> ApiClientResult<Value> {
+        let url = self.base_url.join("simulations")?;
+        let response = self.client.request(Method::OPTIONS, url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "option_simulations".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 
     /// Post a new simulation
-    pub async fn post_simulations(&self, simulation_obj: &'static str) -> ApiClientResult<()> {
-        let url = format!("{}/simulations", self.base_url);
+    pub async fn post_simulations(&self, simulation_obj: &'static str) -> ApiClientResult<String> {
+        let url = self.base_url.join("simulations")?;
+
         let response = self
             .client
-            .post(&url)
+            .post(url)
             .header(header::CONTENT_TYPE, "application/json")
             .body(simulation_obj)
             .send()
             .await?;
-        if response.status() != reqwest::StatusCode::CREATED {
-            eprintln!("post_simulations failed: {}", &response.status());
-            return Err(ApiClientError::BussinessError(
-                "post_simulations".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let location = response.headers().get(header::LOCATION).and_then(|v| v.to_str().ok());
-        if let None = location {
-            eprintln!("post_simulation not found location header");
-            return Err(ApiClientError::BussinessError(
-                "post_simulations".to_string(),
-                "Location header not found".to_string(),
-            ));
-        }
-        Ok(())
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "post_simulations".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let location = response
+            .headers()
+            .get(header::LOCATION)
+            .ok_or_else(|| {
+                ApiClientError::BussinessError(
+                    "post_simulations".to_string(),
+                    "Location header not found".to_string(),
+                )
+            })?
+            .to_str()
+            .map_err(|_| {
+                ApiClientError::BussinessError(
+                    "post_simulations".to_string(),
+                    "Location header contains invalid UTF-8".to_string(),
+                )
+            })?;
+
+        // 解析 URL 并提取最后一段作为 ID
+        let simulations_url = Url::parse(location)?;
+
+        let simulations_id = simulations_url
+            .path_segments()
+            .ok_or_else(|| {
+                ApiClientError::BussinessError(
+                    "post_simulations".to_string(),
+                    "Location URL cannot be a base (no path segments)".to_string(),
+                )
+            })?
+            .filter(|s| !s.is_empty())
+            .last()
+            .ok_or_else(|| {
+                ApiClientError::BussinessError(
+                    "post_simulations".to_string(),
+                    format!("Location header path is empty"),
+                )
+            })?;
+        Ok(simulations_id.to_string())
     }
 
     /// Get a simulation by id
-    pub async fn get_simulations(&self, simulation_id: &str) -> ApiClientResult<()> {
-        let url = format!("{}/simulations/{}", self.base_url, simulation_id);
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("get_simulations failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "get_simulations".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    pub async fn get_simulations(&self, simulation_id: &str) -> ApiClientResult<Value> {
+        let url = self.base_url.join(&format!("simulations/{}", simulation_id))?;
+
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "get_simulations".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 
     /// Get an alpha by id
-    pub async fn alphas(&self, alpha_id: &str) -> ApiClientResult<()> {
-        let url = format!("{}/alphas/{}", self.base_url, alpha_id);
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("get_alphas failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "get_alphas".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    pub async fn alphas(&self, alpha_id: &str) -> ApiClientResult<Value> {
+        let url = self.base_url.join(&format!("alphas/{}", alpha_id))?;
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "get_alphas".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 
     /// Get an alpha recordsets by id
-    pub async fn alpha_recordsets(&self, alpha_id: &str) -> ApiClientResult<()> {
-        let url = format!("{}/alphas/{}/recordsets", self.base_url, alpha_id);
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("get_alpha_recordsets failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "get_alpha_recordsets".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    pub async fn alpha_recordsets(&self, alpha_id: &str) -> ApiClientResult<Value> {
+        let url = self.base_url.join(&format!("alphas/{}/recordsets", alpha_id))?;
+
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "get_alpha_recordsets".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 
     /// Set the name of a recordset by recordset name
-    pub async fn alpha_recordsets_name(&self, alpha_id: &str, name: &str) -> ApiClientResult<()> {
-        let url = format!("{}/alphas/{}/recordsets/{}", self.base_url, alpha_id, name);
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("alpha_recordsets_setname failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "alpha_recordsets_setname".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    pub async fn alpha_recordsets_name(
+        &self, alpha_id: &str, name: &str,
+    ) -> ApiClientResult<Value> {
+        let url = self.base_url.join(&format!("alphas/{}/recordsets/{}", alpha_id, name))?;
+
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "alpha_recordsets_setname".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+
+        println!("{:?}", &result);
+
+        Ok(result)
     }
 
     /// Get the diversities of a user's activities
-    pub async fn user_activities_diversities(&self) -> ApiClientResult<()> {
-        let sign_context = self.get_sign_context()?;
-        let url = format!("{}/users/{}/activities/diversity", self.base_url, &sign_context.user.id);
+    pub async fn user_activities_diversities(&self) -> ApiClientResult<Value> {
+        let authentication_info = self.get_authentication().await?;
+        let url = self
+            .base_url
+            .join(&format!("users/{}/activities/diversity", authentication_info.user.id))?;
 
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("user_activities_diversities failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "user_activities_diversities".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+        let response = self.client.get(url).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "user_activities_diversities".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 
-    /// Get the sign-in context of the current user
-    pub fn get_sign_context(&self) -> ApiClientResult<&SignInConext> {
-        let sign_context = self.sign_context.as_ref().ok_or(ApiClientError::NotLoggedIn)?;
-        Ok(sign_context)
+    /// Get a list of data sets.
+    pub async fn data_sets(&self, settings: &Data_Sets_Setting) -> ApiClientResult<Value> {
+        let url = self.base_url.join("data-sets")?;
+
+        let response = self.client.get(url).query(settings).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "data_sets".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{}", &result);
+        Ok(result)
     }
 
-    pub async fn data_sets(&self) -> ApiClientResult<()> {
-        let url = format!("{}/data/data-sets", self.base_url);
-        let response = self.client.get(&url).send().await?;
-        if response.status() != reqwest::StatusCode::OK {
-            eprintln!("data_sets failed: {}", response.status());
-            return Err(ApiClientError::BussinessError(
-                "data_sets".to_string(),
-                response.status().to_string(),
-            ));
-        }
-        let text = response.text().await?;
-        println!("{}", text);
-        Ok(())
+    /// Get a data set field by data set ID.
+    pub async fn data_fields(&self, settings: &Data_Fields_Setting) -> ApiClientResult<Value> {
+        let url = self.base_url.join("data-fields")?;
+
+        let response = self.client.get(url).query(settings).send().await?;
+
+        let response =
+            response.error_for_status().map_err(|err| ApiClientError::ResponseError {
+                api_name: "data_fields".to_string(),
+                status: err.status().into(),
+            })?;
+
+        let result = response.json().await?;
+        println!("{:?}", &result);
+        Ok(result)
     }
 }

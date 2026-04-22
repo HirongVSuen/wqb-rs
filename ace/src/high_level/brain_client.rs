@@ -4,12 +4,12 @@ use polars::prelude::JsonReader;
 use std::io::Cursor;
 use tracing::{Level, event};
 
+use crate::app::*;
 use crate::err::StatusCodeDisplay;
 use crate::err::{ApiClientError, BrainClientError};
 use crate::low_level::ApiClient;
-use crate::low_level::types::{AuthenticationInfo, BaseSetting, SignInInfo};
+use crate::low_level::types::{AuthenticationInfo, SignInInfo};
 
-use super::types::*;
 /// BrainClient 结果类型
 pub type BrainClientResult<T> = std::result::Result<T, BrainClientError>;
 
@@ -151,6 +151,15 @@ impl BrainClient {
         Ok(auth_info)
     }
 }
+
+impl BrainExecutor for BrainClient {
+    fn simulate_vec(
+        &self, data: &[SimulationData],
+    ) -> impl std::future::Future<Output = anyhow::Result<()>> + Send {
+        async { anyhow::Ok(()) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

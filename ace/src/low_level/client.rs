@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use super::types::*;
+use crate::app::BaseSetting;
 use crate::err::ApiClientError;
 use reqwest::{Client, Method, Response, StatusCode, Url, header};
 use serde_json::Value;
@@ -347,6 +348,7 @@ impl ApiClient {
 mod tests {
     use super::ApiClient;
     use super::ApiClientResult;
+    use crate::app::BaseSetting;
     use crate::low_level::types::*;
 
     fn sign_in_info() -> SignInInfo {

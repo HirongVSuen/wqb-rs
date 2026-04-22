@@ -25,12 +25,3 @@ pub struct User {
 pub struct Token {
     pub expiry: f64,
 }
-
-#[derive(Debug, Serialize)]
-pub struct BaseSetting {
-    pub delay: u8,
-    #[serde(rename = "instrumentType")]
-    pub instrument_type: String,
-    pub region: String,
-    pub universe: String,
-}

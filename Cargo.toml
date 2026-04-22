@@ -1,7 +1,7 @@
 [workspace]
 
 resolver = "3"
-members = ["ace"]
+members = ["ace", "rig-agentic"]
 
 [workspace.package]
 
@@ -10,21 +10,38 @@ authors = ["KaceSuen <myant91@126.com>"]
 edition = "2024"
 license = "MIT"
 
+# 构建优化配置
+[profile.release]
+opt-level = "z"  # 最小体积优化
+lto = true       # 链接时优化
+codegen-units = 1 # 减少代码生成单元以提高优化
+strip = true     # 剥离调试符号
+panic = "abort"  # 使用abort而不是unwind来减少体积
+
+# 针对特定依赖的优化
+
+
+[profile.release.package.reqwest]
+opt-level = "z"  # 优化Reqwest体积
+
+[profile.release.package.tokio]
+opt-level = "z"  # 优化Tokio体积
+
 [workspace.dependencies]
 
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "time", "net", "io-util", "macros"] }
 
-reqwest = { version = "0.12", features = ["cookies", "json"] }
+reqwest = { version = "0.12", features = ["cookies", "json"], default-features = false }
 url = "2.5.8"
 
 thiserror = "1.0"
 
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
-test-log = { version = "0.2", features = ["trace"] }
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter"] }
+test-log = { version = "0.2", default-features = false }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_urlencoded = "0.7"
 
-polars = { version = "0.53.0", features = ["polars-io", "json"] }
+polars = { version = "0.53", features = ["polars-io", "json"] }

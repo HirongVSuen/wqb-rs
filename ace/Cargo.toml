@@ -20,5 +20,8 @@ serde.workspace = true
 serde_json.workspace = true
 
 polars.workspace = true
+md5 = "0.8.0"
+anyhow = "1.0.102"
+tokio-stream = "0.1.18"
 [dev-dependencies]
 test-log.workspace = true

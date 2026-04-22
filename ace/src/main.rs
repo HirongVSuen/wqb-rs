@@ -1,40 +1,47 @@
 use std::collections::HashMap;
 
+use ace::app::*;
+use ace::high_level::BrainClient;
 use ace::high_level::BrainClientConfig;
-use ace::high_level::types::{SimulationDataType, SimulationParam, SimulationState};
-use ace::{high_level::BrainClient, low_level::types::BaseSetting};
+use ace::high_level::simple_strategy::SimpleStrategy;
+use ace::high_level::sql_db::SqlDb;
 use serde_json::Value;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     // 创建client并自动登录
     let config = BrainClientConfig { auth_file_path: "/home/hirong/test_auth.json".to_string() };
     let client = BrainClient::new(config)?;
-    client.auto_login().await?;
 
-    // 获取alpha运行参数
-    let (base_setting, param) = get_settings();
+    let runner =
+        Runner { executor: client, db: SqlDb::default(), strategy: SimpleStrategy::default() };
 
-    // 获取数据集 数据字段
-    let df = client.data_field_df_by_dataset(&base_setting, "fundamental23").await?;
-    let field_ids: Vec<String> =
-        df.column("id")?.str()?.into_no_null_iter().map(|val| val.to_string()).collect();
-    let mut results = Vec::new();
+    runner.run().await?;
+    // client.auto_login().await?;
 
-    for val in field_ids {
-        println!("simulation:{}", val);
+    // // 获取alpha运行参数
+    // let (base_setting, param) = get_settings();
 
-        // 运行alpha
-        match client.simulation(SimulationDataType::REGULAR, &base_setting, &param, val).await {
-            Ok(alpha_id) => {
-                println!("alpha_id: {}", alpha_id);
-                results.push(alpha_id);
-            }
-            Err(e) => {
-                eprintln!("Error: {:?}", e);
-            }
-        }
-    }
+    // // 获取数据集 数据字段
+    // let df = client.data_field_df_by_dataset(&base_setting, "fundamental23").await?;
+    // let field_ids: Vec<String> =
+    //     df.column("id")?.str()?.into_no_null_iter().map(|val| val.to_string()).collect();
+    // let mut results = Vec::new();
+
+    // for val in field_ids {
+    //     println!("simulation:{}", val);
+
+    //     // 运行alpha
+    //     match client.simulation(SimulationDataType::REGULAR, &base_setting, &param, val).await {
+    //         Ok(alpha_id) => {
+    //             println!("alpha_id: {}", alpha_id);
+    //             results.push(alpha_id);
+    //         }
+    //         Err(e) => {
+    //             eprintln!("Error: {:?}", e);
+    //         }
+    //     }
+    // }
     Ok(())
 }
 
